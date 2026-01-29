@@ -164,7 +164,6 @@ class CircuitBreakerPlugin(Plugin):
         """
         tool = payload.name
         st = _get_state(tool)
-        cfg = _cfg_for(self._cfg, tool)
         now = _now()
 
         # Check if cooldown has elapsed - transition to half-open state
