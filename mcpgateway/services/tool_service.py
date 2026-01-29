@@ -3026,11 +3026,16 @@ class ToolService:
                             ctx = create_ssl_context(gateway_ca_cert)
                         else:
                             ctx = None
+
+                        # Use effective_timeout for read operations if not explicitly overridden by caller
+                        # This ensures the underlying client waits at least as long as the tool configuration requires
+                        factory_timeout = timeout if timeout else get_http_timeout(read_timeout=effective_timeout)
+
                         return httpx.AsyncClient(
                             verify=ctx if ctx else get_default_verify(),
                             follow_redirects=True,
                             headers=headers,
-                            timeout=timeout if timeout else get_http_timeout(),
+                            timeout=factory_timeout,
                             auth=auth,
                             limits=httpx.Limits(
                                 max_connections=settings.httpx_max_connections,
