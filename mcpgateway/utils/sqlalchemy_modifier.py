@@ -178,15 +178,33 @@ def json_contains_tag_expr(session, col, values: Union[str, Iterable[str]], matc
         return and_(*conditions)
 
     # ---------- PostgreSQL ----------
-    # For dict-format tags: use jsonb_path_query_array to extract ids
+    # For dict-format tags: use JSON functions that work with both JSON and JSONB types
+    # Note: .contains() only works with JSONB, but our column is JSON type
     if dialect == "postgresql":
-        # Build conditions for each tag value
+        # Get table and column reference for raw SQL
+        table_name = getattr(getattr(col, "table", None), "name", None)
+        column_name = getattr(col, "name", None) or str(col)
+        col_ref = f"{table_name}.{column_name}" if table_name else column_name
+        
+        # Build conditions for each tag value using JSON functions
         conditions = []
         for tag_value in values_list:
-            # Check if any element is the string OR has id matching the value
-            # This handles both ["tag"] and [{"id": "tag", "label": "Tag"}] formats
-            string_match = col.contains([tag_value])
-            dict_match = col.contains([{"id": tag_value}])
+            # Generate unique parameter names to avoid collisions
+            param_str = f"tag_{uuid.uuid4().hex[:8]}"
+            param_dict = f"tag_{uuid.uuid4().hex[:8]}"
+            
+            # For string tags: check if any array element equals the tag value
+            # json_array_elements_text extracts text values from JSON array
+            string_match = text(
+                f"EXISTS (SELECT 1 FROM json_array_elements_text({col_ref}) AS elem WHERE elem = :{param_str})"
+            ).bindparams(**{param_str: tag_value})
+            
+            # For dict tags: check if any array element's 'id' field equals the tag value
+            # json_array_elements returns JSON objects, ->> extracts text from 'id' field
+            dict_match = text(
+                f"EXISTS (SELECT 1 FROM json_array_elements({col_ref}) AS elem WHERE elem->>'id' = :{param_dict})"
+            ).bindparams(**{param_dict: tag_value})
+            
             conditions.append(or_(string_match, dict_match))
 
         if match_any:
