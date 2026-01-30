@@ -181,25 +181,30 @@ def json_contains_tag_expr(session, col, values: Union[str, Iterable[str]], matc
     # For dict-format tags: use JSON functions that work with both JSON and JSONB types
     # Note: .contains() only works with JSONB, but our column is JSON type
     if dialect == "postgresql":
-        # Get table and column reference for raw SQL
-        table_name = getattr(getattr(col, "table", None), "name", None)
-        column_name = getattr(col, "name", None) or str(col)
-        col_ref = f"{table_name}.{column_name}" if table_name else column_name
-
+        from sqlalchemy import cast, bindparam, select, exists
+        from sqlalchemy.dialects.postgresql import JSONB
+        from sqlalchemy.sql import literal_column
+        
         # Build conditions for each tag value using JSON functions
         conditions = []
         for tag_value in values_list:
-            # Generate unique parameter names to avoid collisions
-            param_str = f"tag_{uuid.uuid4().hex[:8]}"
+            # Generate unique parameter name
+            param_name = f"tag_{uuid.uuid4().hex[:8]}"
             param_dict = f"tag_{uuid.uuid4().hex[:8]}"
-
-            # For string tags: check if any array element equals the tag value
-            # json_array_elements_text extracts text values from JSON array
-            string_match = text(f"EXISTS (SELECT 1 FROM json_array_elements_text({col_ref}) AS elem WHERE elem = :{param_str})").bindparams(**{param_str: tag_value})
-
-            # For dict tags: check if any array element's 'id' field equals the tag value
-            # json_array_elements returns JSON objects, ->> extracts text from 'id' field
-            dict_match = text(f"EXISTS (SELECT 1 FROM json_array_elements({col_ref}) AS elem WHERE elem->>'id' = :{param_dict})").bindparams(**{param_dict: tag_value})
+            
+            # For string tags: use @> operator to check if JSONB array contains the value
+            # Cast the tag_value to JSONB array and check containment
+            string_match = cast(col, JSONB).op("@>")(
+                cast(func.jsonb_build_array(bindparam(param_name, value=tag_value)), JSONB)
+            )
+            
+            # For dict tags: use EXISTS with jsonb_array_elements to check 'id' field
+            # This is compatible with all PostgreSQL versions that support JSONB
+            dict_match = exists(
+                select(literal_column("1"))
+                .select_from(func.jsonb_array_elements(cast(col, JSONB)).alias("elem"))
+                .where(literal_column("elem").op("->>")(literal_column("'id'")) == bindparam(param_dict, value=tag_value))
+            )
 
             conditions.append(or_(string_match, dict_match))
 
