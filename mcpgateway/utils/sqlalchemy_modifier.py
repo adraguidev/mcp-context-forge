@@ -181,23 +181,22 @@ def json_contains_tag_expr(session, col, values: Union[str, Iterable[str]], matc
     # For dict-format tags: use JSON functions that work with both JSON and JSONB types
     # Note: .contains() only works with JSONB, but our column is JSON type
     if dialect == "postgresql":
-        from sqlalchemy import cast, bindparam, select, exists
+        # Third-Party
+        from sqlalchemy import bindparam, cast, exists, select
         from sqlalchemy.dialects.postgresql import JSONB
         from sqlalchemy.sql import literal_column
-        
+
         # Build conditions for each tag value using JSON functions
         conditions = []
         for tag_value in values_list:
             # Generate unique parameter name
             param_name = f"tag_{uuid.uuid4().hex[:8]}"
             param_dict = f"tag_{uuid.uuid4().hex[:8]}"
-            
+
             # For string tags: use @> operator to check if JSONB array contains the value
             # Cast the tag_value to JSONB array and check containment
-            string_match = cast(col, JSONB).op("@>")(
-                cast(func.jsonb_build_array(bindparam(param_name, value=tag_value)), JSONB)
-            )
-            
+            string_match = cast(col, JSONB).op("@>")(cast(func.jsonb_build_array(bindparam(param_name, value=tag_value)), JSONB))
+
             # For dict tags: use EXISTS with jsonb_array_elements to check 'id' field
             # This is compatible with all PostgreSQL versions that support JSONB
             dict_match = exists(
