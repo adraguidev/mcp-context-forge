@@ -31308,3 +31308,17 @@ window.filterByRelationship = filterByRelationship;
 window.filterTeams = filterTeams;
 window.searchTeamSelector = searchTeamSelector;
 window.selectTeamFromSelector = selectTeamFromSelector;
+
+/**
+ * Handle keydown event when Enter key is pressed
+ *
+ * @param {string} event - the event triggered
+ * @param {function} callback - the function to call when the Enter key is pressed
+ */
+function handleKeydown(event, callback) {
+    if (event.key === "Enter") {
+        callback(event);
+    }
+}
+
+window.handleKeydown = handleKeydown;
