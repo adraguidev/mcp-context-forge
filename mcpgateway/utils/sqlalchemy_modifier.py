@@ -185,26 +185,22 @@ def json_contains_tag_expr(session, col, values: Union[str, Iterable[str]], matc
         table_name = getattr(getattr(col, "table", None), "name", None)
         column_name = getattr(col, "name", None) or str(col)
         col_ref = f"{table_name}.{column_name}" if table_name else column_name
-        
+
         # Build conditions for each tag value using JSON functions
         conditions = []
         for tag_value in values_list:
             # Generate unique parameter names to avoid collisions
             param_str = f"tag_{uuid.uuid4().hex[:8]}"
             param_dict = f"tag_{uuid.uuid4().hex[:8]}"
-            
+
             # For string tags: check if any array element equals the tag value
             # json_array_elements_text extracts text values from JSON array
-            string_match = text(
-                f"EXISTS (SELECT 1 FROM json_array_elements_text({col_ref}) AS elem WHERE elem = :{param_str})"
-            ).bindparams(**{param_str: tag_value})
-            
+            string_match = text(f"EXISTS (SELECT 1 FROM json_array_elements_text({col_ref}) AS elem WHERE elem = :{param_str})").bindparams(**{param_str: tag_value})
+
             # For dict tags: check if any array element's 'id' field equals the tag value
             # json_array_elements returns JSON objects, ->> extracts text from 'id' field
-            dict_match = text(
-                f"EXISTS (SELECT 1 FROM json_array_elements({col_ref}) AS elem WHERE elem->>'id' = :{param_dict})"
-            ).bindparams(**{param_dict: tag_value})
-            
+            dict_match = text(f"EXISTS (SELECT 1 FROM json_array_elements({col_ref}) AS elem WHERE elem->>'id' = :{param_dict})").bindparams(**{param_dict: tag_value})
+
             conditions.append(or_(string_match, dict_match))
 
         if match_any:
