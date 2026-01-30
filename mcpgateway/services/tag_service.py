@@ -342,6 +342,7 @@ class TagService:
             >>> # Setup service and mock database
             >>> service = TagService()
             >>> mock_db = MagicMock()
+            >>> mock_db.get_bind.return_value.dialect.name = "sqlite"
             >>>
             >>> # Mock entity with tag
             >>> mock_entity = MagicMock()
