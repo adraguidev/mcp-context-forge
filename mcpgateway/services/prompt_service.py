@@ -481,13 +481,13 @@ class PromptService:
 
             custom_name = prompt.custom_name or prompt.name
             display_name = prompt.display_name or custom_name
-            
+
             # Extract gateway_id from prompt if present
             gateway_id = getattr(prompt, "gateway_id", None)
             gateway = None
             if gateway_id:
                 gateway = db.execute(select(DbGateway).where(DbGateway.id == gateway_id)).scalar_one_or_none()
-            
+
             computed_name = self._compute_prompt_name(custom_name, gateway=gateway)
 
             # Create DB model
@@ -517,21 +517,14 @@ class PromptService:
             # Check for existing server with the same name
             if visibility.lower() == "public":
                 # Check for existing public prompt with the same name and gateway_id
-                existing_prompt = db.execute(select(DbPrompt).where(
-                    DbPrompt.name == computed_name, 
-                    DbPrompt.visibility == "public",
-                    DbPrompt.gateway_id == gateway_id
-                )).scalar_one_or_none()
+                existing_prompt = db.execute(select(DbPrompt).where(DbPrompt.name == computed_name, DbPrompt.visibility == "public", DbPrompt.gateway_id == gateway_id)).scalar_one_or_none()
                 if existing_prompt:
                     raise PromptNameConflictError(computed_name, enabled=existing_prompt.enabled, prompt_id=existing_prompt.id, visibility=existing_prompt.visibility)
             elif visibility.lower() == "team":
                 # Check for existing team prompt with the same name and gateway_id
-                existing_prompt = db.execute(select(DbPrompt).where(
-                    DbPrompt.name == computed_name, 
-                    DbPrompt.visibility == "team", 
-                    DbPrompt.team_id == team_id,
-                    DbPrompt.gateway_id == gateway_id
-                )).scalar_one_or_none()
+                existing_prompt = db.execute(
+                    select(DbPrompt).where(DbPrompt.name == computed_name, DbPrompt.visibility == "team", DbPrompt.team_id == team_id, DbPrompt.gateway_id == gateway_id)
+                ).scalar_one_or_none()
                 if existing_prompt:
                     raise PromptNameConflictError(computed_name, enabled=existing_prompt.enabled, prompt_id=existing_prompt.id, visibility=existing_prompt.visibility)
 
