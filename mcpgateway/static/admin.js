@@ -31316,7 +31316,7 @@ window.selectTeamFromSelector = selectTeamFromSelector;
  * @param {function} callback - the function to call when the Enter key is pressed
  */
 function handleKeydown(event, callback) {
-    if (event.key === "Enter" || event.key===' ') {
+    if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         callback(event);
     }
