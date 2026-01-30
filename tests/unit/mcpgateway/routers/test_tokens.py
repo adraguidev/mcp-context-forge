@@ -617,6 +617,7 @@ class TestEdgeCases:
         request.expires_in_days = 30
         request.tags = []
         request.team_id = "team-789"  # Add team_id attribute
+        request.is_active = True  # Add is_active attribute
 
         with patch("mcpgateway.routers.tokens.TokenCatalogService") as mock_service_class:
             mock_service = mock_service_class.return_value
